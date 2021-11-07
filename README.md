@@ -30,7 +30,7 @@ the docker daemon will start again
 * `-v ${NGINX_PHP_BASE_DIR}/nginx_etc:/etc/nginx` - this will persist nginx configuration files in ${NGINX_PHP_BASE_DIR}/nginx_etc. 
 This and the rest of the `-v HOST_DIR:CONTAINER_DIR` configuration parameters map directories from your computer to the 
 container's file system so that the files in these directories could persist between the container restarts. If you do 
-not want to persist the logs and totally fine with the default ocnfiguration files then you can omit most of the `-v ...` 
+not want to persist the logs and totally fine with the default configuration files then you can omit most of the `-v ...` 
 options. 
 * `-v ${NGINX_PHP_BASE_DIR}/nginx_log:/var/log/nginx` - this is where nginx logs will be saved
 * `-v ${NGINX_PHP_BASE_DIR}/php_log:/var/log/php-fpm` - where to keep php logs
@@ -58,9 +58,11 @@ but this approach is slow and error prone
 3. Download Wordpress and unpack it to ${NGINX_PHP_WWW_DIR}
 4. Go to http://localhost:8080 and configure your Wordpress instance 
 
-# How to build
+# How to build it locally
+* Checkout the git repository: git clone https://github.com/rtfms/nginx-php.git
 * Modify the Dockerfile if necessary
 * Build the image: `docker build -t nginx-php .`
+* When you will need to run the new docker image, use `nginx-php` instead of `rtfms/nginx-php`
 
 # Can I use this image in production?
 You can, with the proper security measures (like configuring the filrewall, LIDS, antivirus etc) and after providing 
@@ -68,6 +70,14 @@ appropriate configuration files. However, this image is more optimized specifica
 It includes certain tools (compilers, network utilities, editors etc) that make developing the web server configuration
 easier, but also make the image bloated and, thus, less secure. So whether to use this image in the production or not
 depends on your specific goals. 
+
+Another thing worth noting is that this image is against the Docker paradigm which includes the idea of running primitive 
+services in their own docker containers. This container includes both nginx and php-fpm, which, in ideal world, should 
+be split into separate images and started together using docker-compose or a similar tool. This approach is not very
+convenient though, because:
+- hub.docker.com does not support docker-compose.yml files (at least at the moment)
+- docker-compose is an executable separate from docker and may or may not be installed on the target system
+- fewer containers are easier to manage, just IMHO 
 
 I hope that this image could be a good foundation for the production config after you edit the Docker file, and the
 config files to meet your specific configuration and security needs and then remove all unnecessary modules and tools

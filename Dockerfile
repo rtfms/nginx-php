@@ -2,12 +2,13 @@ FROM php:7.4-fpm
 
 LABEL maintainer="Andrey Mikhalchuk <andrey@mikhalchuk.com>"
 
-ENV NGINX_VERSION=1.19.4
+ENV NGINX_VERSION=1.21.3
 
 COPY files /
 
-RUN apt-get update && apt-get install -y procps telnet
+RUN apt-get --allow-releaseinfo-change update && apt-get install -y procps telnet
 COPY files/php.ini /usr/local/etc/php/
+RUN addgroup --system --gid 101 nginx && adduser --system --disabled-login --ingroup nginx --no-create-home --home /nonexistent --gecos "nginx user" --shell /bin/false --uid 101 nginx
 RUN apt-get update && apt-get install -y \
     libfreetype6-dev \
     libjpeg62-turbo-dev \
@@ -16,6 +17,7 @@ RUN apt-get update && apt-get install -y \
     libjpeg-dev \
     libgl-dev \
     webp \
+    sendmail \
     vim \
     wget \
     curl \
@@ -35,7 +37,7 @@ RUN mkdir -p /var/lib/nginx && \
     tar xzvf nginx-${NGINX_VERSION}.tar.gz && \
     cd nginx-${NGINX_VERSION} && \
     ./configure \
-        --with-cc-opt='-g -O2 -fdebug-prefix-map=/build/nginx-Cjs4TR/nginx-1.14.2=. -fstack-protector-strong -Wformat -Werror=format-security -fPIC -Wdate-time -D_FORTIFY_SOURCE=2' \
+        --with-cc-opt='-g -O2 -fdebug-prefix-map=/build/nginx-Cjs4TR/nginx-${NGINX_VERSION}=. -fstack-protector-strong -Wformat -Werror=format-security -fPIC -Wdate-time -D_FORTIFY_SOURCE=2' \
         --with-ld-opt='-Wl,-z,relro -Wl,-z,now -fPIC' \
         --sbin-path=/usr/sbin/nginx \
         --prefix=/etc/nginx \
@@ -79,18 +81,32 @@ RUN mkdir -p /var/lib/nginx && \
     make install && \
     cd .. &&\
     rm -rf nginx-${NGINX_VERSION}
-RUN pecl install mcrypt-1.0.3
+RUN pecl install mcrypt-1.0.4
 RUN mkdir -p /usr/local/etc/php/conf.d/ \
     && docker-php-ext-install -j$(nproc) mysqli iconv \
     && docker-php-ext-enable mysqli mcrypt \
     && docker-php-ext-configure gd --with-freetype=/usr/include/ --with-jpeg=/usr/include/ \
     && docker-php-ext-install -j$(nproc) gd
 
+# install imagemagic
+RUN apt-get update && apt-get install -y libmagickwand-dev --no-install-recommends && rm -rf /var/lib/apt/lists/*
+RUN printf "\n" | pecl install imagick
+RUN docker-php-ext-enable imagick
+
+# install exif
+RUN docker-php-ext-install exif
+
+# install zip
+RUN apt-get update && apt-get install -y \
+        libzip-dev \
+        zip \
+  && docker-php-ext-install zip
+
 RUN ln -sf /dev/stdout /var/log/nginx/access.log \
     && ln -sf /dev/stderr /var/log/nginx/error.log \
     && chmod +x /start.sh
 
-VOLUME [ "/var/log/nginx", "/var/log/php-fpm", "/www" ]
+VOLUME [ "/var/log/nginx", "/var/log/php-fpm", "/www", "/etc/nginx" ]
 EXPOSE 80 443
 
 CMD ["/start.sh"]
